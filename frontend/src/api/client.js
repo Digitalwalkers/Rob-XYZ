@@ -54,6 +54,46 @@ export async function getFileTimeRange(fileId, robotIds) {
   return data;
 }
 
+export async function getFeatureRegistry() {
+  const { data } = await api.get('/features/registry');
+  return data;
+}
+
+export async function getFeatureStatus(fileId) {
+  const { data } = await api.get(`/files/${fileId}/features/status`);
+  return data;
+}
+
+export async function getFeatureData(fileId, { featureKeys, robotIds } = {}) {
+  const params = {};
+  if (featureKeys && featureKeys.length > 0) params.feature_keys = featureKeys.join(',');
+  if (robotIds && robotIds.length > 0) params.robot_ids = robotIds.join(',');
+  const { data } = await api.get(`/files/${fileId}/features/data`, { params });
+  return data;
+}
+
+export async function computeFeatures(fileId) {
+  const { data } = await api.post(`/files/${fileId}/features/compute`);
+  return data;
+}
+
+export function subscribeFeatureProgress(fileId, onEvent, onDone) {
+  const es = new EventSource(`/api/files/${fileId}/features/progress`);
+  es.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    onEvent(data);
+    if (data.status === 'completed' || data.status === 'error') {
+      es.close();
+      onDone?.();
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    onDone?.();
+  };
+  return () => es.close();
+}
+
 export async function getFileData(fileId, { robotIds, start, end, sampleInterval, signal } = {}) {
   const params = {};
   if (robotIds && robotIds.length > 0) params.robot_ids = robotIds.join(',');

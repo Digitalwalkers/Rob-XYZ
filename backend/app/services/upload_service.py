@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import uuid
 from collections import defaultdict
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import async_session
 from app.models import UploadTask, CsvFile, RobotData, RobotSummary
 from app.services.progress import progress_store
+from app.features.service import compute_sync_features, launch_async_features
 
 REQUIRED_COLUMNS = {
     "robot_id", "timestamp", "location_x", "location_y",
@@ -157,6 +159,16 @@ async def process_upload(task_id: str, file_path: str, filename: str, file_size:
                 task.completed_at = datetime.now(timezone.utc)
 
             await session.commit()
+
+        # --- Step 4: Compute features ---
+        progress_store.update(task_id, progress=95, message="计算特征数据...")
+
+        async with async_session() as session:
+            await compute_sync_features(file_id, session)
+            await session.commit()
+
+        # Launch async features in background
+        asyncio.create_task(launch_async_features(file_id))
 
         # --- Done ---
         progress_store.update(

@@ -10,6 +10,7 @@ import Timeline from '../components/exploration/Timeline';
 import BatteryChart from '../components/exploration/BatteryChart';
 import SpeedChart from '../components/exploration/SpeedChart';
 import StatusChart from '../components/exploration/StatusChart';
+import FeaturePanel from '../components/exploration/FeaturePanel';
 import useDataCache from '../hooks/useDataCache';
 
 export default function ExplorationPage() {
@@ -67,6 +68,7 @@ export default function ExplorationPage() {
 
       <div className="space-y-6">
         <ConfigPanel />
+        <FeaturePanel />
         <StatusChart />
         <Timeline />
         <BatteryChart />

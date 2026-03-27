@@ -1,9 +1,12 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import useTimelineStore from '../../stores/timelineStore';
+import useFeatureStore from '../../stores/featureStore';
 
 const PADDING = 24;
-const HEIGHT = 80;
+const BASE_HEIGHT = 80;
 const AXIS_Y = 50;
+const FEATURE_ZONE_GAP = 8;
+const FEATURE_ROW_H = 10;
 const HANDLE_W = 10;
 const TICK_H = 8;
 const MIN_WINDOW_MS = 5000;
@@ -53,9 +56,34 @@ export default function Timeline() {
   const setRight = useTimelineStore((s) => s.setRight);
   const setWindow = useTimelineStore((s) => s.setWindow);
 
+  // Feature overlay data
+  const registry = useFeatureStore((s) => s.registry);
+  const enabled = useFeatureStore((s) => s.enabled);
+  const featureData = useFeatureStore((s) => s.featureData);
+
   const [fullStart, fullEnd] = fullRange;
   const fullSpan = fullEnd - fullStart;
   const viewSpan = viewEnd - viewStart;
+
+  // Collect enabled features that have data, assign stacking rows
+  const enabledFeatures = useMemo(() => {
+    const result = [];
+    let segmentRow = 0;
+    for (const feat of registry) {
+      if (!enabled[feat.key] || !featureData[feat.key]) continue;
+      const items = featureData[feat.key];
+      if (items.length === 0) continue;
+      result.push({
+        ...feat,
+        items,
+        row: feat.shape === 'segment' ? segmentRow++ : -1,
+      });
+    }
+    return result;
+  }, [registry, enabled, featureData]);
+
+  const segmentFeatureCount = enabledFeatures.filter((f) => f.shape === 'segment').length;
+  const HEIGHT = BASE_HEIGHT + (segmentFeatureCount > 0 ? FEATURE_ZONE_GAP + segmentFeatureCount * FEATURE_ROW_H : 0);
 
   // Cursor is always derived from window center
   const cursor = (left + right) / 2;
@@ -464,6 +492,50 @@ export default function Timeline() {
             opacity={0.7}
           />
         )}
+
+        {/* Feature overlays */}
+        {enabledFeatures.map((feat) => {
+          const featureZoneY = AXIS_Y + TICK_H / 2 + 18 + FEATURE_ZONE_GAP;
+          if (feat.shape === 'segment') {
+            const rowY = featureZoneY + feat.row * FEATURE_ROW_H;
+            return feat.items.map((item, i) => {
+              const x1 = timeToX(new Date(item.start_time).getTime());
+              const x2 = timeToX(new Date(item.end_time || item.start_time).getTime());
+              const clampedX1 = Math.max(PADDING, x1);
+              const clampedX2 = Math.min(width - PADDING, x2);
+              if (clampedX2 <= clampedX1) return null;
+              return (
+                <rect
+                  key={`${feat.key}-${i}`}
+                  x={clampedX1}
+                  y={rowY}
+                  width={clampedX2 - clampedX1}
+                  height={FEATURE_ROW_H - 2}
+                  fill={feat.color}
+                  opacity={0.6}
+                  rx={2}
+                >
+                  <title>{feat.label}</title>
+                </rect>
+              );
+            });
+          }
+          // Points — diamond markers on the axis
+          return feat.items.map((item, i) => {
+            const x = timeToX(new Date(item.start_time).getTime());
+            if (x < PADDING || x > width - PADDING) return null;
+            return (
+              <g key={`${feat.key}-${i}`}>
+                <polygon
+                  points={`${x},${AXIS_Y - 14} ${x + 4},${AXIS_Y - 18} ${x},${AXIS_Y - 22} ${x - 4},${AXIS_Y - 18}`}
+                  fill={feat.color}
+                >
+                  <title>{feat.label}{item.metadata_json ? `: ${JSON.parse(item.metadata_json).error_code || ''}` : ''}</title>
+                </polygon>
+              </g>
+            );
+          });
+        })}
 
         {/* Cursor line — always at boundary center */}
         {cursorX >= PADDING && cursorX <= width - PADDING && (

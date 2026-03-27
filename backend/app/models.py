@@ -88,3 +88,38 @@ class RobotSummary(Base):
         Index("ix_robot_summary_file", "file_id"),
         UniqueConstraint("file_id", "robot_id"),
     )
+
+
+class FeatureTask(Base):
+    __tablename__ = "feature_tasks"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    file_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("csv_files.id", ondelete="CASCADE"))
+    feature_key: Mapped[str] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/computing/completed/error
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_feature_task_file", "file_id"),
+        UniqueConstraint("file_id", "feature_key"),
+    )
+
+
+class RobotFeature(Base):
+    __tablename__ = "robot_features"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    file_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("csv_files.id", ondelete="CASCADE"))
+    robot_id: Mapped[str] = mapped_column(String(100))
+    feature_key: Mapped[str] = mapped_column(String(100))
+    shape: Mapped[str] = mapped_column(String(20))  # point/segment
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_robot_feature_lookup", "file_id", "robot_id", "feature_key"),
+    )

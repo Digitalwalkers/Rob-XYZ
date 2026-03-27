@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
-from app.routers import upload, files
+from app.routers import upload, files, features
 
 
 @asynccontextmanager
@@ -26,3 +26,4 @@ app.add_middleware(
 
 app.include_router(upload.router, prefix="/api")
 app.include_router(files.router, prefix="/api")
+app.include_router(features.router, prefix="/api")

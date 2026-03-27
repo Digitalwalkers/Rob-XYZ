@@ -77,6 +77,35 @@ class RobotDataRow(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# --- Features ---
+class FeatureRegistryItem(BaseModel):
+    key: str
+    label: str
+    shape: str
+    timing: str
+    color: str
+    severity: str
+
+
+class FeatureStatusResponse(BaseModel):
+    feature_key: str
+    status: str
+    progress: int
+
+    model_config = {"from_attributes": True}
+
+
+class RobotFeatureItem(BaseModel):
+    robot_id: str
+    feature_key: str
+    shape: str
+    start_time: datetime
+    end_time: datetime | None = None
+    metadata_json: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 # --- SSE Progress ---
 class ProgressEvent(BaseModel):
     status: str
